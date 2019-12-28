@@ -9,11 +9,11 @@ using namespace std;
 
 using uint = unsigned int;
 
-const int IMAGINARY_NEGATIVE_MARGIN = -1;
-const int IMAGINARY_POSITIVE_MARGIN = 1;
+const double IMAGINARY_NEGATIVE_MARGIN = -1.3;
+const double IMAGINARY_POSITIVE_MARGIN = 1.3;
 
-const int REAL_NEGATIVE_MARGIN = -2;
-const int REAL_POSITIVE_MARGIN = 1;
+const double REAL_NEGATIVE_MARGIN = -2;
+const double REAL_POSITIVE_MARGIN = 1;
 
 const int ITERATIONS_PER_PIXEL = 255;
 
@@ -30,14 +30,24 @@ struct compl {
 	double real;
 	double img;
 
-	//we declare the multiplication and sum of complex numbers. This is one more reason to separate it into a separate class
-	compl operator*(compl other) {
-		return compl{(real* other.real) - (img * other.img), (real* other.img) + (other.real * img)};
+	//we declare the multiplication and sum of complex numbers. 
+	//This is one more reason to separate it into a separate class
+
+	compl operator * (compl const& other) {
+		compl res;
+		res.real = (real * other.real) - (img * other.img);
+		res.img = (real * other.img) + (other.real * img);
+		return res;
 	}
 
-	compl operator+(compl other) {
-		return compl{real + other.real, img + other.img};
+	compl operator + (compl const& other) {
+		compl res;
+		res.real = real + other.real;
+		res.img = img + other.img;
+		return res;
 	}
+
+
 };
 
 
@@ -97,21 +107,29 @@ void generateComplexPlane(complexPlane& cp, int height, int width, compl center,
 //going to change, and can return the max without waiting
 int isInMandelbrot(compl c) {
 	int counter = 0;
-	while (c.img < IMAGINARY_POSITIVE_MARGIN && c.img > IMAGINARY_NEGATIVE_MARGIN &&
-		c.real < REAL_POSITIVE_MARGIN && c.real > REAL_NEGATIVE_MARGIN && counter < ITERATIONS_PER_PIXEL) {
-		c = c * c + c;	//mandelbrot formula
+	compl temp;
+	compl seed = { 0.285, -0.01 };	//julia->{ 0.285, -0.01 } raices -> { -1.3, 0.00525 }
+	while (c.img <= 1e+40 && c.img >= -1e+40 &&
+		c.real <= 1e+40 && c.real >= -1e+40 && counter < ITERATIONS_PER_PIXEL) {
+		temp = c * c  + seed;	//mandelbrot formula
+		c = temp;
 		counter++;
 	}
 	return counter;
 }
 
 
+
 //you input a complexplane, it gives you a canvas. ez pz
 void generateMandelbrot(complexPlane& cp, canvas& cv) {
+	int color;
 	if (cp.height == cv.height && cp.width == cv.width) {
 		for (int j = 0; j < cp.height; j++) {
 			for (int i = 0; i < cp.width; i++) {
-				cv.canv[j][i].red = cv.canv[j][i].green = cv.canv[j][i].blue = isInMandelbrot(cp.table[j][i]);
+				color = (int)(((double)isInMandelbrot(cp.table[j][i]) / (double)ITERATIONS_PER_PIXEL) * 255);
+				cv.canv[j][i].green = 255-color;
+				cv.canv[j][i].red =  255-color;
+				cv.canv[j][i].blue =  255-color;
 			}
 		}
 	}
@@ -127,8 +145,8 @@ void mandelbrot() {
 
 	char input;
 
-	uint winWidth = 1920; //1920
-	uint winHeight = 1080; //1080
+	uint winWidth = 1000; //1920
+	uint winHeight = 800; //1080
 
 	cout << "Debug\n";
 	//cin >> input;
@@ -145,37 +163,22 @@ void mandelbrot() {
 		SDL_WINDOWPOS_CENTERED, winWidth, winHeight, SDL_WINDOW_SHOWN);
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-	/*
-	canvas canvas{
-		{
-		{{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{255,0,255,255},{255,0,255,255}, },
-		{{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255}, {255,0,255,255},{255,0,255,255},},
-		{{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255}, {255,0,255,255},{255,0,255,255},},
-		{{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255}, {255,0,255,255},{255,0,255,255},},
-		{{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255}, {255,0,255,255},{255,0,255,255},},
-		{{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255},{0,255,255,255}, {255,0,255,255},{255,0,255,255},},
-		{{255,0,255,255},{255,0,255,255},{255,0,255,255},{255,0,255,255},{255,0,255,255},{255,0,255,255},{255,0,255,255},{255,0,255,255},{255,0,255,255},{255,0,255,255},},
-		{{255,0,255,255},{255,0,255,255},{255,0,255,255},{255,0,255,255},{255,0,255,255},{255,0,255,255},{255,0,255,255},{255,0,255,255},{255,0,255,255},{255,0,255,255},},
-		},
-		8,
-		10,
-	};
-	*/
-
-	compl a = {23.567000000, 105.5600000 };
-	a = a*a;
+	compl a = {-0.8, 1 };
+	for (int i = 0; i < 10; i++) { 
+		a = a * a + a; 
+	}
 	cout << a.real;
-	cout << "+";
+	if(a.img>0)cout << "+";
 	cout << a.img;
 	cout << "i\n";
-
+	cout << "deberia estar estudiando";
 	canvas canvas = {
 	vector<vector<pixel>>(winHeight, vector<pixel>(winWidth)),
 	winHeight,
 	winWidth,
 	};
 	complexPlane cPTest = {};
-	compl centerTest = { -1.2,0 };
+	compl centerTest = { -0.35,0 };
 
 	generateComplexPlane(cPTest, winHeight, winWidth, centerTest, 1);
 	generateMandelbrot(cPTest, canvas);
