@@ -15,7 +15,7 @@ const double IMAGINARY_POSITIVE_MARGIN = 1.3;
 const double REAL_NEGATIVE_MARGIN = -2;
 const double REAL_POSITIVE_MARGIN = 1;
 
-const int ITERATIONS_PER_PIXEL = 255;
+const int ITERATIONS_PER_PIXEL = 650;
 
 //Red, green, blue, alpha
 struct pixel {
@@ -111,7 +111,7 @@ int isInMandelbrot(compl c) {
 	compl seed = { 0.285, -0.01 };	//julia->{ 0.285, -0.01 } raices -> { -1.3, 0.00525 }
 	while (c.img <= 1e+40 && c.img >= -1e+40 &&
 		c.real <= 1e+40 && c.real >= -1e+40 && counter < ITERATIONS_PER_PIXEL) {
-		temp = c * c  + seed;	//mandelbrot formula
+		temp = c * c + seed;	//mandelbrot formula
 		c = temp;
 		counter++;
 	}
@@ -123,13 +123,64 @@ int isInMandelbrot(compl c) {
 //you input a complexplane, it gives you a canvas. ez pz
 void generateMandelbrot(complexPlane& cp, canvas& cv) {
 	int color;
+	int colormode = 1;
 	if (cp.height == cv.height && cp.width == cv.width) {
 		for (int j = 0; j < cp.height; j++) {
-			for (int i = 0; i < cp.width; i++) {
-				color = (int)(((double)isInMandelbrot(cp.table[j][i]) / (double)ITERATIONS_PER_PIXEL) * 255);
-				cv.canv[j][i].green = 255-color;
-				cv.canv[j][i].red =  255-color;
-				cv.canv[j][i].blue =  255-color;
+			for (int i = 0; i < cp.width; i++) { //1529
+
+				if (colormode==0) {
+					color = (int)(((double)isInMandelbrot(cp.table[j][i]) / (double)ITERATIONS_PER_PIXEL) * 8000);
+					switch (color / 255)
+					{
+					case 0:
+						cv.canv[j][i].red = 255;
+						cv.canv[j][i].green = color % 255;
+						cv.canv[j][i].blue = 0;
+						break;
+					case 1:
+						cv.canv[j][i].red = 255 - color % 255;
+						cv.canv[j][i].green = 255;
+						cv.canv[j][i].blue = 0;
+						break;
+					case 2:
+						cv.canv[j][i].red = 0;
+						cv.canv[j][i].green = 255;
+						cv.canv[j][i].blue = color % 255;
+						break;
+					case 3:
+						cv.canv[j][i].red = 0;
+						cv.canv[j][i].green = 255 - color % 255;
+						cv.canv[j][i].blue = 255;
+						break;
+					case 4:
+						cv.canv[j][i].red = color % 255;
+						cv.canv[j][i].green = 0;
+						cv.canv[j][i].blue = 255;
+						break;
+					case 5:
+						cv.canv[j][i].red = 255;
+						cv.canv[j][i].green = 0;
+						cv.canv[j][i].blue = 255 - color % 255;
+						break;
+					case 6:
+						cv.canv[j][i].red = 254;
+						cv.canv[j][i].green = 0;
+						cv.canv[j][i].blue = 0;
+						break;
+					default:
+						break;
+					}
+				}
+				else if (colormode==1){
+					color = (int)(((double)isInMandelbrot(cp.table[j][i]) / (double)ITERATIONS_PER_PIXEL) * 1000000);
+					cv.canv[j][i].green = color / 3;
+					cv.canv[j][i].red = color / 2;
+					cv.canv[j][i].blue = color / 7;
+				}
+				else if (colormode == 2) {
+					color = (int)(((double)isInMandelbrot(cp.table[j][i]) / (double)ITERATIONS_PER_PIXEL) * 255);
+					cv.canv[j][i].green = cv.canv[j][i].red = cv.canv[j][i].blue = color;					
+				}
 			}
 		}
 	}
@@ -163,25 +214,15 @@ void mandelbrot() {
 		SDL_WINDOWPOS_CENTERED, winWidth, winHeight, SDL_WINDOW_SHOWN);
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-	compl a = {-0.8, 1 };
-	for (int i = 0; i < 10; i++) { 
-		a = a * a + a; 
-	}
-	cout << a.real;
-	if(a.img>0)cout << "+";
-	cout << a.img;
-	cout << "i\n";
-	cout << "deberia estar estudiando";
 	canvas canvas = {
 	vector<vector<pixel>>(winHeight, vector<pixel>(winWidth)),
 	winHeight,
 	winWidth,
 	};
 	complexPlane cPTest = {};
-	compl centerTest = { -0.35,0 };
+	compl centerTest = { -0.50,0.10 };
 
-	generateComplexPlane(cPTest, winHeight, winWidth, centerTest, 1);
-	generateMandelbrot(cPTest, canvas);
+	int zoom = 1;
 
 	if (window == nullptr || renderer == nullptr)
 		cout << "Error cargando SDL" << endl;
@@ -191,11 +232,14 @@ void mandelbrot() {
 		while (eventInput.type != SDL_QUIT) {
 			SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 			SDL_RenderClear(renderer);
-
+			generateComplexPlane(cPTest, winHeight, winWidth, centerTest, zoom);
+			generateMandelbrot(cPTest, canvas);
 			renderCanvas(canvas, renderer);
 
 			SDL_RenderPresent(renderer);
 			SDL_PollEvent(&eventInput);
+			zoom += zoom*2;
+			SDL_Delay(100);
 		}
 	}
 	SDL_DestroyRenderer(renderer);
