@@ -25,7 +25,7 @@ struct pixel {
 	int alpha;
 };
 
-//imaginary, real
+//real, imaginary
 struct compl {
 	double real;
 	double img;
@@ -76,6 +76,11 @@ void renderCanvas(canvas& c, SDL_Renderer* renderer) {
 	}
 }
 
+void clear() {//this cleans the screen and moves the cursor to 0,0
+	// CSI[2J clears screen, CSI[H moves the cursor to top-left corner
+	std::cout << "\x1B[2J\x1B[H";
+}
+
 //this should be in another class and be the constructor of complexplane, but im lazy and this isn't serious, don't do this kids
 void generateComplexPlane(complexPlane& cp, int height, int width, compl center, double scale) {
 	cp.height = height;
@@ -85,14 +90,14 @@ void generateComplexPlane(complexPlane& cp, int height, int width, compl center,
 	cp.scale = scale;
 
 	compl topLeftComplex; //first we calculate the top-left corner number, to later add increments to it and obtain the full chart
-	compl increment;	//what we are going to add
+	compl increment;	//what we are going to add every time
 
 	topLeftComplex.img = cp.center.img + ((IMAGINARY_POSITIVE_MARGIN - IMAGINARY_NEGATIVE_MARGIN) / 2) / cp.scale;
 	topLeftComplex.real = cp.center.real - ((REAL_POSITIVE_MARGIN - REAL_NEGATIVE_MARGIN) / 2) / cp.scale;
 
 	//this is negative because we go topleft -> down
-	increment.img = -((double)(IMAGINARY_POSITIVE_MARGIN - IMAGINARY_NEGATIVE_MARGIN) / cp.scale) / cp.height;
-	increment.real = ((double)(REAL_POSITIVE_MARGIN - REAL_NEGATIVE_MARGIN) / cp.scale) / cp.height;
+	increment.img = -((double)(IMAGINARY_POSITIVE_MARGIN - IMAGINARY_NEGATIVE_MARGIN) / cp.scale) / cp.width;
+	increment.real = ((double)(REAL_POSITIVE_MARGIN - REAL_NEGATIVE_MARGIN) / cp.scale) / cp.width;
 
 	for (int j = 0; j < cp.height; j++) {
 		for (int i = 0; i < cp.width; i++) {
@@ -128,7 +133,7 @@ void generateMandelbrot(complexPlane& cp, canvas& cv) {
 		for (int j = 0; j < cp.height; j++) {
 			for (int i = 0; i < cp.width; i++) { //1529
 
-				if (colormode==0) {
+				if (colormode == 0) {
 					color = (int)(((double)isInMandelbrot(cp.table[j][i]) / (double)ITERATIONS_PER_PIXEL) * 8000);
 					switch (color / 255)
 					{
@@ -171,7 +176,7 @@ void generateMandelbrot(complexPlane& cp, canvas& cv) {
 						break;
 					}
 				}
-				else if (colormode==1){
+				else if (colormode == 1) {
 					color = (int)(((double)isInMandelbrot(cp.table[j][i]) / (double)ITERATIONS_PER_PIXEL) * 1000000);
 					cv.canv[j][i].green = color / 3;
 					cv.canv[j][i].red = color / 2;
@@ -179,7 +184,7 @@ void generateMandelbrot(complexPlane& cp, canvas& cv) {
 				}
 				else if (colormode == 2) {
 					color = (int)(((double)isInMandelbrot(cp.table[j][i]) / (double)ITERATIONS_PER_PIXEL) * 255);
-					cv.canv[j][i].green = cv.canv[j][i].red = cv.canv[j][i].blue = color;					
+					cv.canv[j][i].green = cv.canv[j][i].red = cv.canv[j][i].blue = color;
 				}
 			}
 		}
@@ -194,19 +199,59 @@ void mandelbrot() {
 	SDL_Window* window = nullptr;
 	SDL_Renderer* renderer = nullptr;
 
-	char input;
+	char input = ' ';
 
 	uint winWidth = 1000; //1920
 	uint winHeight = 800; //1080
 
-	cout << "Debug\n";
-	//cin >> input;
-	if (true || input == 'a') cout << "Debug_Mode\n";
-	else {
-		cout << "How tall do you want the window?\n";
-		cin >> winHeight;
-		cout << "How wide do you want the window?";
-		cin >> winWidth;
+	int renderMode = 0;
+
+	cout << "Debug? [Y/N]\n";
+	
+	while (input != 'y' && input != 'Y' && input != 'n' && input != 'N') {
+		cin >> input;
+		if (input == 'y' || input == 'Y') cout << "Debug_Mode\n";
+		else if (input == 'n' || input == 'N') {
+			cout << "How tall (in pixels) do you want the window? (recommended:1080)\n";
+			cin >> winHeight;
+			cout << "How wide (in pixels) do you want the window? (recommended:1920)";
+			cin >> winWidth;
+		}
+	}
+	const int numFrames = 35;
+
+	double zoom = 0.7;
+
+	canvas cfractal = {
+	vector<vector<pixel>>(winHeight, vector<pixel>(winWidth)),
+	winHeight,
+	winWidth,
+	};
+	complexPlane cPTest = {};
+	compl centerTest = { -0.47098750,0.19021300 };
+
+	canvas video[numFrames];
+	int actualFrame = 0;
+
+	if (renderMode == 1) {
+		clear();
+		cout << "Rendering fractal video\n         ";
+
+		for (int i = 0; i < numFrames; i++) {
+			cout << "_";
+		}
+
+		cout << "\nProgress:";
+
+		
+		for (int i = 0; i < numFrames; i++) {
+			generateComplexPlane(cPTest, winHeight, winWidth, centerTest, zoom);
+			generateMandelbrot(cPTest, cfractal);
+			video[i] = cfractal;
+			zoom += 0.15 * zoom * zoom / (zoom / 2);
+			cout << "*";
+		}
+		int actualFrame = 0;		
 	}
 
 	SDL_Init(SDL_INIT_EVERYTHING);
@@ -214,32 +259,31 @@ void mandelbrot() {
 		SDL_WINDOWPOS_CENTERED, winWidth, winHeight, SDL_WINDOW_SHOWN);
 	renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-	canvas canvas = {
-	vector<vector<pixel>>(winHeight, vector<pixel>(winWidth)),
-	winHeight,
-	winWidth,
-	};
-	complexPlane cPTest = {};
-	compl centerTest = { -0.50,0.10 };
-
-	int zoom = 1;
-
 	if (window == nullptr || renderer == nullptr)
 		cout << "Error cargando SDL" << endl;
 	else {
 		SDL_Event eventInput;
 		SDL_PollEvent(&eventInput);
+
+		zoom = 0.7; //348611
+
 		while (eventInput.type != SDL_QUIT) {
 			SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 			SDL_RenderClear(renderer);
-			generateComplexPlane(cPTest, winHeight, winWidth, centerTest, zoom);
-			generateMandelbrot(cPTest, canvas);
-			renderCanvas(canvas, renderer);
+			
+			if(renderMode==1) renderCanvas(video[actualFrame % numFrames], renderer);
+			else {
+				
+				generateComplexPlane(cPTest, winHeight, winWidth, centerTest, zoom);
+				generateMandelbrot(cPTest, cfractal);
+				renderCanvas(cfractal, renderer);
+				zoom += 0.15*zoom*zoom/(zoom/2);
+				cout << zoom << "\n";
+			}
 
 			SDL_RenderPresent(renderer);
 			SDL_PollEvent(&eventInput);
-			zoom += zoom*2;
-			SDL_Delay(100);
+			actualFrame++;
 		}
 	}
 	SDL_DestroyRenderer(renderer);
