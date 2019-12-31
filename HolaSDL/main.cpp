@@ -17,6 +17,17 @@ const double REAL_POSITIVE_MARGIN = 1;
 
 const int ITERATIONS_PER_PIXEL = 650;
 
+const vector <const char*> nameFiles = {
+	"frame001.bmp","frame002.bmp","frame003.bmp","frame004.bmp","frame005.bmp",
+	"frame006.bmp","frame007.bmp","frame008.bmp","frame009.bmp","frame010.bmp",
+	"frame011.bmp","frame012.bmp","frame013.bmp","frame014.bmp","frame015.bmp",
+	"frame016.bmp","frame017.bmp","frame018.bmp","frame019.bmp","frame020.bmp",
+	"frame021.bmp","frame022.bmp","frame023.bmp","frame024.bmp","frame025.bmp",
+	"frame026.bmp","frame027.bmp","frame028.bmp","frame029.bmp","frame030.bmp",
+	"frame031.bmp","frame032.bmp","frame033.bmp","frame034.bmp","frame035.bmp",
+	"frame036.bmp","frame037.bmp","frame038.bmp","frame039.bmp","frame040.bmp",
+};
+
 //Red, green, blue, alpha
 struct pixel {
 	int red;
@@ -207,7 +218,7 @@ void mandelbrot() {
 	int renderMode = 0;
 
 	cout << "Debug? [Y/N]\n";
-	
+
 	while (input != 'y' && input != 'Y' && input != 'n' && input != 'N') {
 		cin >> input;
 		if (input == 'y' || input == 'Y') cout << "Debug_Mode\n";
@@ -218,7 +229,7 @@ void mandelbrot() {
 			cin >> winWidth;
 		}
 	}
-	const int numFrames = 35;
+	const int numFrames = 40;
 
 	double zoom = 0.7;
 
@@ -243,15 +254,15 @@ void mandelbrot() {
 
 		cout << "\nProgress:";
 
-		
+
 		for (int i = 0; i < numFrames; i++) {
 			generateComplexPlane(cPTest, winHeight, winWidth, centerTest, zoom);
 			generateMandelbrot(cPTest, cfractal);
 			video[i] = cfractal;
-			zoom += 0.15 * zoom * zoom / (zoom / 2);
+			zoom += 0.5 * zoom * zoom / (zoom / 2);
 			cout << "*";
 		}
-		int actualFrame = 0;		
+		int actualFrame = 0;
 	}
 
 	SDL_Init(SDL_INIT_EVERYTHING);
@@ -265,25 +276,61 @@ void mandelbrot() {
 		SDL_Event eventInput;
 		SDL_PollEvent(&eventInput);
 
-		zoom = 0.7; //348611
+		zoom = 1; //348611
 
 		while (eventInput.type != SDL_QUIT) {
 			SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
 			SDL_RenderClear(renderer);
+
+			if (renderMode == 1 && actualFrame < numFrames) {
+				renderCanvas(video[actualFrame % numFrames], renderer); 
 			
-			if(renderMode==1) renderCanvas(video[actualFrame % numFrames], renderer);
-			else {
-				
+				SDL_Surface* pScreenShot = SDL_CreateRGBSurface(0, winWidth, winHeight, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000);
+
+				if (pScreenShot)
+				{
+					// Read the pixels from the current render target and save them onto the surface
+					SDL_RenderReadPixels(renderer, NULL, SDL_GetWindowPixelFormat(window), pScreenShot->pixels, pScreenShot->pitch);
+
+					// Create the bmp screenshot file
+					SDL_SaveBMP(pScreenShot, nameFiles[actualFrame % numFrames]);
+
+					// Destroy the screenshot surface
+					SDL_FreeSurface(pScreenShot);
+				}
+			
+			}
+			else if (renderMode == 0){
+
 				generateComplexPlane(cPTest, winHeight, winWidth, centerTest, zoom);
 				generateMandelbrot(cPTest, cfractal);
 				renderCanvas(cfractal, renderer);
-				zoom += 0.15*zoom*zoom/(zoom/2);
-				cout << zoom << "\n";
+
+				// Create an empty RGB surface that will be used to create the screenshot bmp file
+				SDL_Surface* pScreenShot = SDL_CreateRGBSurface(0, winWidth, winHeight, 32, 0x00ff0000, 0x0000ff00, 0x000000ff, 0xff000000);
+
+				if (pScreenShot)
+				{
+					// Read the pixels from the current render target and save them onto the surface
+					SDL_RenderReadPixels(renderer, NULL, SDL_GetWindowPixelFormat(window), pScreenShot->pixels, pScreenShot->pitch);
+
+					// Create the bmp screenshot file
+					SDL_SaveBMP(pScreenShot, "Screenshot.bmp");
+
+					// Destroy the screenshot surface
+					SDL_FreeSurface(pScreenShot);
+				}
+
+
+				zoom += 0.4 * zoom * zoom / (zoom / 2); //0.15 * zoom * zoom / (zoom / 2)
+				cout << zoom << "\n";			
+
 			}
 
 			SDL_RenderPresent(renderer);
 			SDL_PollEvent(&eventInput);
 			actualFrame++;
+			
 		}
 	}
 	SDL_DestroyRenderer(renderer);
